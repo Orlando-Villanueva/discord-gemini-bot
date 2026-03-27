@@ -59,6 +59,80 @@ function chunkForDiscord(text, maxLength = 1900) {
   return chunks.length > 0 ? chunks : ["Gemini returned an empty response."];
 }
 
+function addGroundingCitations(response) {
+  let text = response.text?.trim() || "Gemini returned an empty response.";
+  const supports =
+    response.candidates?.[0]?.groundingMetadata?.groundingSupports || [];
+  const chunks =
+    response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+
+  const sortedSupports = [...supports].sort(
+    (a, b) => (b.segment?.endIndex ?? 0) - (a.segment?.endIndex ?? 0),
+  );
+
+  for (const support of sortedSupports) {
+    const endIndex = support.segment?.endIndex;
+
+    if (endIndex === undefined || !support.groundingChunkIndices?.length) {
+      continue;
+    }
+
+    const citationLinks = support.groundingChunkIndices
+      .map((index) => {
+        const uri = chunks[index]?.web?.uri;
+
+        if (!uri) {
+          return null;
+        }
+
+        return `[${index + 1}](${uri})`;
+      })
+      .filter(Boolean);
+
+    if (citationLinks.length > 0) {
+      text =
+        text.slice(0, endIndex) +
+        citationLinks.join(", ") +
+        text.slice(endIndex);
+    }
+  }
+
+  const uniqueSources = chunks
+    .map((chunk) => chunk.web)
+    .filter((webSource) => webSource?.uri)
+    .filter(
+      (webSource, index, allSources) =>
+        allSources.findIndex((source) => source.uri === webSource.uri) === index,
+    )
+    .slice(0, 5);
+
+  if (uniqueSources.length === 0) {
+    return text;
+  }
+
+  const sourcesList = uniqueSources
+    .map((source, index) => `${index + 1}. ${source.title || source.uri}: ${source.uri}`)
+    .join("\n");
+
+  return `${text}\n\nSources:\n${sourcesList}`;
+}
+
+function describeGeminiError(error) {
+  const sdkMessage = error?.message?.trim();
+  const apiMessage = error?.error?.message?.trim();
+  const status = error?.status;
+
+  if (apiMessage && status) {
+    return `${status}: ${apiMessage}`;
+  }
+
+  if (sdkMessage) {
+    return sdkMessage;
+  }
+
+  return "Unknown Gemini API error.";
+}
+
 async function sendDiscordReply(interaction, text, isPrivate) {
   const chunks = chunkForDiscord(text);
   const followUpOptions = isPrivate
@@ -94,6 +168,7 @@ async function main() {
 
   client.once(Events.ClientReady, (readyClient) => {
     console.log(`Logged in as ${readyClient.user.tag}`);
+    console.log(`Using Gemini model: ${geminiModel}`);
   });
 
   client.on(Events.InteractionCreate, async (interaction) => {
@@ -115,6 +190,7 @@ async function main() {
 
     const prompt = interaction.options.getString("prompt", true);
     const isPrivate = interaction.options.getBoolean("private") ?? false;
+    const useSearch = interaction.options.getBoolean("search") ?? false;
 
     await interaction.deferReply(
       isPrivate ? { flags: MessageFlags.Ephemeral } : {},
@@ -127,6 +203,7 @@ async function main() {
         config: {
           systemInstruction,
           maxOutputTokens: geminiMaxOutputTokens,
+          tools: useSearch ? [{ googleSearch: {} }] : undefined,
           thinkingConfig: {
             thinkingBudget: geminiThinkingBudget,
           },
@@ -135,14 +212,20 @@ async function main() {
 
       await sendDiscordReply(
         interaction,
-        response.text?.trim() || "Gemini returned an empty response.",
+        useSearch
+          ? addGroundingCitations(response)
+          : response.text?.trim() || "Gemini returned an empty response.",
         isPrivate,
       );
     } catch (error) {
       console.error("Gemini request failed:", error);
+      console.error(`Gemini model in use: ${geminiModel}`);
 
-      const message =
-        "I hit an error talking to Gemini. Check the logs and confirm your Discord and Gemini credentials are valid.";
+      const errorSummary = describeGeminiError(error);
+      const message = `Gemini request failed for \`${geminiModel}\`: ${errorSummary}`.slice(
+        0,
+        1900,
+      );
 
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply(message);

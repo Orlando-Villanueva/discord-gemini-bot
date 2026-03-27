@@ -78,6 +78,9 @@ You should see a login message in the terminal. Then test these commands in Disc
 - `/ping`
 - `/ask prompt: Explain vector databases in simple terms`
 - `/ask prompt: Summarize this in one paragraph private: true`
+- `/ask prompt: What changed in OpenAI this week? search: true`
+
+When `search: true` is enabled, the bot tells Gemini to use Google Search grounding so it can answer with fresher web-backed information and include source links in the response.
 
 ## 7. Deploy to Render
 
@@ -113,6 +116,7 @@ Render runs `npm run register` as a pre-deploy step, then starts the bot with `n
 ## Official references
 
 - Google Gemini API quickstart: [ai.google.dev/gemini-api/docs/quickstart](https://ai.google.dev/gemini-api/docs/quickstart)
+- Google Search grounding: [ai.google.dev/gemini-api/docs/google-search](https://ai.google.dev/gemini-api/docs/google-search)
 - Google API key guide: [ai.google.dev/gemini-api/docs/api-key](https://ai.google.dev/gemini-api/docs/api-key)
 - Google text generation guide: [ai.google.dev/gemini-api/docs/text-generation](https://ai.google.dev/gemini-api/docs/text-generation)
 - Google JS SDK docs: [googleapis.github.io/js-genai](https://googleapis.github.io/js-genai/)

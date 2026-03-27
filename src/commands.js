@@ -17,6 +17,11 @@ export const commandBuilders = [
       option
         .setName("private")
         .setDescription("If true, only you can see the reply."),
+    )
+    .addBooleanOption((option) =>
+      option
+        .setName("search")
+        .setDescription("Use Google Search grounding for fresher web-backed answers."),
     ),
 ];
 
