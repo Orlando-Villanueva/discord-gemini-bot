@@ -1,4 +1,8 @@
-import { SlashCommandBuilder } from "discord.js";
+import {
+  ApplicationCommandType,
+  ContextMenuCommandBuilder,
+  SlashCommandBuilder,
+} from "discord.js";
 
 export const commandBuilders = [
   new SlashCommandBuilder()
@@ -23,6 +27,9 @@ export const commandBuilders = [
         .setName("search")
         .setDescription("Use Google Search grounding for fresher web-backed answers."),
     ),
+  new ContextMenuCommandBuilder()
+    .setName("Ask About Message")
+    .setType(ApplicationCommandType.Message),
 ];
 
 export const commands = commandBuilders.map((command) => command.toJSON());
