@@ -77,7 +77,6 @@ You should see a login message in the terminal. Then test these commands in Disc
 
 - `/ping`
 - `/ask prompt: Explain vector databases in simple terms`
-- `/ask prompt: Summarize this in one paragraph private: true`
 - `/ask prompt: What changed in OpenAI this week? search: true`
 - Right-click a message -> `Apps` -> `Ask About Message`
 

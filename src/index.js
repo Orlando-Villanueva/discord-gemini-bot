@@ -422,12 +422,9 @@ async function main() {
     }
 
     const prompt = interaction.options.getString("prompt", true);
-    const isPrivate = interaction.options.getBoolean("private") ?? false;
     const useSearch = interaction.options.getBoolean("search") ?? false;
 
-    await interaction.deferReply(
-      isPrivate ? { flags: MessageFlags.Ephemeral } : {},
-    );
+    await interaction.deferReply();
 
     try {
       const reply = await generateModelReply({
@@ -440,7 +437,7 @@ async function main() {
         useSearch,
       });
 
-      await sendDiscordReply(interaction, reply, isPrivate);
+      await sendDiscordReply(interaction, reply, false);
     } catch (error) {
       console.error("Gemini request failed:", error);
       console.error(`Gemini model in use: ${geminiModel}`);
@@ -453,11 +450,6 @@ async function main() {
 
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply(message);
-      } else if (isPrivate) {
-        await interaction.reply({
-          content: message,
-          flags: MessageFlags.Ephemeral,
-        });
       } else {
         await interaction.reply({ content: message });
       }
