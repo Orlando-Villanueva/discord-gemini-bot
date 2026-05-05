@@ -200,6 +200,35 @@ function parseYesNo(value) {
   return normalized === "y" || normalized === "yes" || normalized === "true";
 }
 
+function parseEmojiStyle(value) {
+  const normalized = value?.trim().toLowerCase();
+
+  if (!normalized) {
+    return "light";
+  }
+
+  if (normalized === "off" || normalized === "light") {
+    return normalized;
+  }
+
+  throw new Error("DISCORD_EMOJI_STYLE must be either 'off' or 'light'.");
+}
+
+function buildSystemInstruction(baseInstruction, emojiStyle) {
+  if (emojiStyle === "off") {
+    return baseInstruction;
+  }
+
+  return [
+    baseInstruction,
+    "",
+    "Emoji guidance: You may occasionally use a single well-chosen emoji when it adds warmth, clarity, or scannability.",
+    "Keep emoji usage sparse and natural.",
+    "Most replies should use no emoji; some can use one, and only rarely two.",
+    "Do not add emoji to every response, do not stack or repeat them, and skip emoji for sensitive or serious topics.",
+  ].join("\n");
+}
+
 function formatMessageContext(message) {
   const authorName =
     message.author?.globalName ||
@@ -283,9 +312,14 @@ async function main() {
     512,
   );
   const geminiThinkingBudget = parseIntegerEnv("GEMINI_THINKING_BUDGET", 0);
-  const systemInstruction =
+  const baseSystemInstruction =
     process.env.SYSTEM_INSTRUCTION?.trim() ||
     "You are a helpful Discord assistant. Keep answers concise, clear, and friendly.";
+  const emojiStyle = parseEmojiStyle(process.env.DISCORD_EMOJI_STYLE);
+  const systemInstruction = buildSystemInstruction(
+    baseSystemInstruction,
+    emojiStyle,
+  );
 
   const ai = new GoogleGenAI({ apiKey: geminiApiKey });
   const client = new Client({ intents: [GatewayIntentBits.Guilds] });

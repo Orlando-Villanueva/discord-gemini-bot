@@ -57,6 +57,7 @@ Optional knobs:
 - `GEMINI_MODEL` defaults to `gemini-3-flash-preview`
 - `GEMINI_MAX_OUTPUT_TOKENS` defaults to `512`
 - `GEMINI_THINKING_BUDGET` defaults to `0` for faster, cheaper replies
+- `DISCORD_EMOJI_STYLE` defaults to `light`, which allows occasional restrained emoji use; set it to `off` to keep replies emoji-free
 - `SYSTEM_INSTRUCTION` lets you control the bot persona
 
 ## 5. Register the slash commands
