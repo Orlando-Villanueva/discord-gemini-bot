@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This is a Node.js 20+ ESM Discord bot backed by the Gemini API. Runtime behavior lives in `src/index.js`, including environment validation, Discord interaction handling, prompt construction, and Gemini responses. Keep command schemas in `src/commands.js`; both the bot and registration script consume its exported command list. Use `src/register-commands.js` only for Discord application-command registration. `render.yaml` defines the Render background worker, and `.env.example` documents required local configuration.
+This is a Node.js 20+ ESM Discord bot backed by the Gemini API. Runtime behavior lives in `src/index.js`, including environment validation, Discord interaction handling, prompt construction, and Gemini responses. Keep command schemas in `src/commands.js`; both the bot and registration script consume its exported command list. Use `src/register-commands.js` only for Discord application-command registration. `.env.example` documents required local configuration.
 
 ## Build, Test, and Development Commands
 
@@ -20,8 +20,8 @@ Use two-space indentation, double quotes, semicolons, and trailing commas, match
 
 ## Testing Guidelines
 
-There is no automated test suite or coverage target yet. At minimum, run `node --check` on changed source files, then validate in a dedicated Discord test guild: register commands, confirm `/ping`, exercise `/ask` with and without search, and test the **Ask About Message** modal when changing message-context behavior. Do not claim live bot or Render validation unless you observed it.
+There is no automated test suite or coverage target yet. At minimum, run `node --check` on changed source files, then validate in a dedicated Discord test guild: register commands, confirm `/ping`, exercise `/ask` with and without search, and test the **Ask About Message** modal when changing message-context behavior. Do not claim live bot validation unless you observed it.
 
 ## Commit & Pull Request Guidelines
 
-Recent commits use short, imperative subjects, such as `Add message context actions and refine Gemini handling`; follow that pattern and keep each commit focused. PRs should explain the user-visible behavior, list configuration or deployment changes, link the relevant issue when available, and include screenshots or Discord output for interaction changes. Call out any new environment variable and update `.env.example`, `README.md`, and `render.yaml` together when deployment configuration changes.
+Recent commits use short, imperative subjects, such as `Add message context actions and refine Gemini handling`; follow that pattern and keep each commit focused. PRs should explain the user-visible behavior, list configuration or deployment changes, link the relevant issue when available, and include screenshots or Discord output for interaction changes. Call out any new environment variable and update `.env.example` and `README.md` together when deployment configuration changes.

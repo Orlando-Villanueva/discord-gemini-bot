@@ -1,12 +1,15 @@
-# Minimal Discord Gemini Bot
+# Discord Gemini Bot
 
-This repo is a tiny Discord slash-command bot that uses the Google AI Studio Gemini API through the `@google/genai` SDK.
+A minimal, self-hosted Discord assistant powered by the Google AI Studio Gemini API. It offers slash commands, an **Ask About Message** context action, and optional Google Search grounding.
 
-## Why this shape
+This is a developer-first template, not a hosted service: you create and control your own Discord application, provide and pay for your own Gemini API key, and run the bot on your own machine or Node-compatible host.
 
-- It uses slash commands instead of reading every message, so you do not need the `MESSAGE_CONTENT` privileged intent.
-- It uses `gemini-3.6-flash` by default, the current stable Gemini Flash model for strong quality, speed, and cost efficiency.
-- It deploys cleanly as a long-running worker on Render.
+## Features
+
+- Slash-command-first interaction, so the bot does not require Discord's `MESSAGE_CONTENT` privileged intent.
+- `/ask` with optional Google Search grounding for web-backed responses.
+- **Ask About Message**, a message-context action that lets a user choose the exact message they want Gemini to analyze.
+- Environment-based configuration for the model, output limit, reasoning level, system instruction, and emoji style.
 
 ## 1. Prerequisites
 
@@ -16,19 +19,22 @@ This repo is a tiny Discord slash-command bot that uses the Google AI Studio Gem
 
 Note: Google's Gemini API quickstart currently says Node.js 18+, but the current `@google/genai` JavaScript SDK docs say Node.js 20+. This project pins Node 20 to stay on the safer side.
 
-## 2. Create the Discord app
+## 2. Create and install your Discord bot
 
 1. Open the [Discord Developer Portal](https://discord.com/developers/applications) and create a new application.
 2. Open the **Bot** section and create or reveal the bot user.
 3. Reset and copy the bot token. Put it in `DISCORD_TOKEN`.
 4. Copy the **Application ID** from **General Information**. Put it in `DISCORD_CLIENT_ID`.
-5. In **Installation** or **OAuth2**, make sure the install link includes:
+5. Open **Installation** and enable **Guild Install**.
+6. In the Guild Install settings, add these scopes:
    - `bot`
    - `applications.commands`
-6. Install the app to a test server you control.
-7. Grant at least the ability to send messages in that server.
+7. Request only the **Send Messages** bot permission.
+8. Copy Discord's generated install link, open it, and install the app in a server you manage.
 
 Recommendation: keep a test server just for development, then set `DISCORD_GUILD_ID` to that server ID. Guild-scoped commands update immediately, which is much nicer while iterating.
+
+Need a walkthrough of the Discord portal? See Discord's official [Build your first bot guide](https://docs.discord.com/developers/quick-start/getting-started).
 
 ## 3. Create the Google AI Studio API key
 
@@ -87,36 +93,34 @@ The `Ask About Message` context-menu command lets you target a specific Discord 
 
 If you want the lowest-cost Gemini 3 option instead, set `GEMINI_MODEL=gemini-3.5-flash-lite` in your local `.env`. Keep `GEMINI_THINKING_LEVEL=minimal` for fast, inexpensive replies.
 
-## 7. Deploy to Render
+## 7. Run it somewhere else
 
-This repo includes [render.yaml](/Users/orlando/Projects/Agents/discord-bot/render.yaml), so Render can create the worker from the repository settings.
+The bot is an ordinary long-running Node.js process. On a Node-compatible host, configure the same environment variables and run these commands:
 
-1. Push this repo to GitHub.
-2. In Render, create a new Blueprint from the repository.
-3. Render will read `render.yaml` and create a background worker.
-4. Enter secret values for:
-   - `DISCORD_TOKEN`
-   - `DISCORD_CLIENT_ID`
-   - `GEMINI_API_KEY`
-5. Optionally set `DISCORD_GUILD_ID` in the Render dashboard if you want test-server command registration during deploys.
-6. Deploy.
+```bash
+npm install
+npm run register
+npm start
+```
 
-Render runs `npm run register` as a pre-deploy step, then starts the bot with `npm start`.
+The host must keep the process running and be able to make outbound connections to Discord and the Gemini API. Do not put your Discord token or Gemini API key in source control.
 
-## 8. File map
+## Privacy and cost
 
-- [src/index.js](/Users/orlando/Projects/Agents/discord-bot/src/index.js): Discord client and Gemini call
-- [src/register-commands.js](/Users/orlando/Projects/Agents/discord-bot/src/register-commands.js): slash command registration
-- [src/commands.js](/Users/orlando/Projects/Agents/discord-bot/src/commands.js): command definitions
-- [render.yaml](/Users/orlando/Projects/Agents/discord-bot/render.yaml): Render worker setup
-- [.env.example](/Users/orlando/Projects/Agents/discord-bot/.env.example): required environment variables
+- This project does not include, collect, or operate with anyone else's credentials.
+- Prompts sent to a deployed bot are processed by its owner's configured Gemini account, subject to Google's terms and data practices.
+- The owner of each deployment is responsible for Gemini usage, quotas, billing, server access, and any moderation or rate limiting appropriate for their community.
 
-## 9. Recommended next improvements
+## File map
 
-- Add per-channel or per-user conversation memory
-- Add moderation or allowlists before exposing the bot broadly
-- Log prompts and failures to a dashboard or error tracker
-- Add rate limiting so one user cannot spam the model
+- `src/index.js`: Discord client and Gemini call
+- `src/register-commands.js`: slash-command registration
+- `src/commands.js`: command definitions
+- `.env.example`: required configuration
+
+## Contributing
+
+Issues and pull requests are welcome. Please do not include tokens, API keys, or Discord IDs in issues, commits, or screenshots.
 
 ## Official references
 
@@ -128,5 +132,3 @@ Render runs `npm run register` as a pre-deploy step, then starts the bot with `n
 - Discord getting started guide: [docs.discord.com/developers/quick-start/getting-started](https://docs.discord.com/developers/quick-start/getting-started)
 - Discord application commands: [docs.discord.com/developers/interactions/application-commands](https://docs.discord.com/developers/interactions/application-commands)
 - Discord gateway intents: [docs.discord.com/developers/events/gateway](https://docs.discord.com/developers/events/gateway)
-- Render background workers: [render.com/docs/background-workers](https://render.com/docs/background-workers)
-- Render blueprint spec: [render.com/docs/blueprint-spec](https://render.com/docs/blueprint-spec)
