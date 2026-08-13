@@ -37,6 +37,22 @@ function parseIntegerEnv(name, fallback) {
   return parsed;
 }
 
+function parseThinkingLevel(value) {
+  const normalized = value?.trim().toLowerCase();
+
+  if (!normalized) {
+    return "minimal";
+  }
+
+  if (["minimal", "low", "medium", "high"].includes(normalized)) {
+    return normalized;
+  }
+
+  throw new Error(
+    "GEMINI_THINKING_LEVEL must be one of: minimal, low, medium, high.",
+  );
+}
+
 function chunkForDiscord(text, maxLength = 1900) {
   function findSplitIndex(segment) {
     const minimumSplit = Math.floor(maxLength * 0.6);
@@ -280,7 +296,7 @@ async function generateModelReply({
   prompt,
   systemInstruction,
   maxOutputTokens,
-  thinkingBudget,
+  thinkingLevel,
   useSearch,
 }) {
   const buildRequest = (activeModel, promptText) => ({
@@ -293,7 +309,7 @@ async function generateModelReply({
       tools: useSearch ? [{ googleSearch: {} }] : undefined,
       thinkingConfig: {
         includeThoughts: false,
-        thinkingBudget,
+        thinkingLevel,
       },
     },
   });
@@ -306,12 +322,14 @@ async function main() {
   const discordToken = requiredEnv("DISCORD_TOKEN");
   const geminiApiKey = requiredEnv("GEMINI_API_KEY");
   const geminiModel =
-    process.env.GEMINI_MODEL?.trim() || "gemini-3-flash-preview";
+    process.env.GEMINI_MODEL?.trim() || "gemini-3.6-flash";
   const geminiMaxOutputTokens = parseIntegerEnv(
     "GEMINI_MAX_OUTPUT_TOKENS",
     512,
   );
-  const geminiThinkingBudget = parseIntegerEnv("GEMINI_THINKING_BUDGET", 0);
+  const geminiThinkingLevel = parseThinkingLevel(
+    process.env.GEMINI_THINKING_LEVEL,
+  );
   const baseSystemInstruction =
     process.env.SYSTEM_INSTRUCTION?.trim() ||
     "You are a helpful Discord assistant. Keep answers concise, clear, and friendly.";
@@ -404,7 +422,7 @@ async function main() {
           prompt,
           systemInstruction,
           maxOutputTokens: geminiMaxOutputTokens,
-          thinkingBudget: geminiThinkingBudget,
+          thinkingLevel: geminiThinkingLevel,
           useSearch,
         });
 
@@ -467,7 +485,7 @@ async function main() {
         prompt,
         systemInstruction,
         maxOutputTokens: geminiMaxOutputTokens,
-        thinkingBudget: geminiThinkingBudget,
+        thinkingLevel: geminiThinkingLevel,
         useSearch,
       });
 

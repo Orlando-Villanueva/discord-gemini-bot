@@ -16,10 +16,10 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
-        value: gemini-2.5-flash
+        value: gemini-3.6-flash
       - key: GEMINI_MAX_OUTPUT_TOKENS
         value: "512"
-      - key: GEMINI_THINKING_BUDGET
-        value: "0"
+      - key: GEMINI_THINKING_LEVEL
+        value: minimal
       - key: SYSTEM_INSTRUCTION
         value: "You are a helpful Discord assistant. Keep answers concise, clear, and friendly."

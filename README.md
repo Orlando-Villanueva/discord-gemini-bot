@@ -5,7 +5,7 @@ This repo is a tiny Discord slash-command bot that uses the Google AI Studio Gem
 ## Why this shape
 
 - It uses slash commands instead of reading every message, so you do not need the `MESSAGE_CONTENT` privileged intent.
-- It uses `gemini-3-flash-preview` by default, which is the best fit if you want a current Gemini 3 model with strong quality without paying Pro-level costs.
+- It uses `gemini-3.6-flash` by default, the current stable Gemini Flash model for strong quality, speed, and cost efficiency.
 - It deploys cleanly as a long-running worker on Render.
 
 ## 1. Prerequisites
@@ -54,9 +54,9 @@ GEMINI_API_KEY=your_google_ai_studio_key
 
 Optional knobs:
 
-- `GEMINI_MODEL` defaults to `gemini-3-flash-preview`
+- `GEMINI_MODEL` defaults to `gemini-3.6-flash`
 - `GEMINI_MAX_OUTPUT_TOKENS` defaults to `512`
-- `GEMINI_THINKING_BUDGET` defaults to `0` for faster, cheaper replies
+- `GEMINI_THINKING_LEVEL` defaults to `minimal` for faster, lower-cost replies. Use `low`, `medium`, or `high` when a task needs more reasoning.
 - `DISCORD_EMOJI_STYLE` defaults to `light`, which allows occasional restrained emoji use; set it to `off` to keep replies emoji-free
 - `SYSTEM_INSTRUCTION` lets you control the bot persona
 
@@ -85,7 +85,7 @@ When `search: true` is enabled, the bot tells Gemini to use Google Search ground
 
 The `Ask About Message` context-menu command lets you target a specific Discord message and then type your own instruction, such as "summarize this", "rewrite this politely", or "fact-check this". This gives the bot message-level context without requiring full channel-reading memory.
 
-If you want the cheapest Gemini 3 option instead of the best overall balance, set `GEMINI_MODEL=gemini-3.1-flash-lite` in your local `.env`, but `gemini-3-flash-preview` is the better default for answer quality.
+If you want the lowest-cost Gemini 3 option instead, set `GEMINI_MODEL=gemini-3.5-flash-lite` in your local `.env`. Keep `GEMINI_THINKING_LEVEL=minimal` for fast, inexpensive replies.
 
 ## 7. Deploy to Render
 
