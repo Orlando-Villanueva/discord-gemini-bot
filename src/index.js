@@ -11,6 +11,15 @@ import {
   TextInputStyle,
 } from "discord.js";
 
+const QUESTION_PREVIEW_MAX_LENGTH = 240;
+const MESSAGE_PREVIEW_MAX_LENGTH = 180;
+const SUBJECT_MAX_LENGTH = 120;
+const SUBJECT_FORMAT_INSTRUCTION = [
+  "Response format:",
+  "First output exactly one line in this format: SUBJECT: <a concise 3-8 word topic heading>.",
+  "Then output the answer directly, without an Answer label or a repeated question.",
+].join("\n");
+
 function requiredEnv(name) {
   const value = process.env[name]?.trim();
 
@@ -41,15 +50,15 @@ function parseThinkingLevel(value) {
   const normalized = value?.trim().toLowerCase();
 
   if (!normalized) {
-    return "minimal";
+    return "medium";
   }
 
-  if (["minimal", "low", "medium", "high"].includes(normalized)) {
+  if (["low", "medium", "high"].includes(normalized)) {
     return normalized;
   }
 
   throw new Error(
-    "GEMINI_THINKING_LEVEL must be one of: minimal, low, medium, high.",
+    "GEMINI_THINKING_LEVEL must be one of: low, medium, high.",
   );
 }
 
@@ -164,7 +173,7 @@ function formatModelText(response) {
 
   if (extractedText) {
     if (finishReason === "MAX_TOKENS") {
-      return `${extractedText}\n\n[Response truncated because Gemini hit the output token limit. Raise GEMINI_MAX_OUTPUT_TOKENS or ask for a shorter answer.]`;
+      return `${extractedText}\n\n[Response truncated because Gemini hit the combined thinking/output token limit. Raise GEMINI_MAX_OUTPUT_TOKENS or lower GEMINI_THINKING_LEVEL.]`;
     }
 
     return extractedText;
@@ -184,7 +193,7 @@ function formatModelText(response) {
   }
 
   if (finishReason === "MAX_TOKENS") {
-    return "Gemini ran out of output tokens. Raise GEMINI_MAX_OUTPUT_TOKENS or ask for a shorter answer.";
+    return "Gemini hit the combined thinking/output token limit. Raise GEMINI_MAX_OUTPUT_TOKENS or lower GEMINI_THINKING_LEVEL.";
   }
 
   if (finishReason) {
@@ -192,6 +201,30 @@ function formatModelText(response) {
   }
 
   return "Gemini returned an empty response. Try retrying the request.";
+}
+
+function cleanSubject(value) {
+  return compactText(value, SUBJECT_MAX_LENGTH)
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .replace(/[.!?]+$/, "")
+    .trim();
+}
+
+function parseModelReply(text) {
+  const subjectMatch = text.match(/^\s*SUBJECT\s*:\s*(.+?)(?:\r?\n|$)/i);
+
+  if (!subjectMatch) {
+    return { subject: "", text };
+  }
+
+  const subject = cleanSubject(subjectMatch[1]);
+  const answer = text.slice(subjectMatch[0].length).trim();
+
+  if (!subject || !answer) {
+    return { subject: "", text };
+  }
+
+  return { subject, text: answer };
 }
 
 function describeGeminiError(error) {
@@ -245,12 +278,34 @@ function buildSystemInstruction(baseInstruction, emojiStyle) {
   ].join("\n");
 }
 
-function formatMessageContext(message) {
-  const authorName =
+function getMessageAuthorName(message) {
+  return (
     message.author?.globalName ||
     message.author?.displayName ||
     message.author?.username ||
-    "Unknown author";
+    "Unknown author"
+  );
+}
+
+function compactText(value, maxLength) {
+  const normalized = value?.trim().replace(/\s+/g, " ") || "";
+
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function escapeDiscordText(value) {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/([`*_~|])/g, "\\$1")
+    .replace(/[<>]/g, "\\$&");
+}
+
+function formatMessageContext(message) {
+  const authorName = getMessageAuthorName(message);
   const content = message.content?.trim() || "[No text content]";
   const attachments = [...message.attachments.values()]
     .slice(0, 5)
@@ -273,20 +328,61 @@ function messageHasAnalyzableContent(message) {
   return Boolean(message.content?.trim()) || message.attachments.size > 0;
 }
 
-async function sendDiscordReply(interaction, text, isPrivate) {
-  const chunks = chunkForDiscord(text);
-  const followUpOptions = isPrivate
-    ? { flags: MessageFlags.Ephemeral }
-    : undefined;
+function formatQuestionContext(prompt, subject) {
+  const heading =
+    cleanSubject(subject) ||
+    compactText(prompt, QUESTION_PREVIEW_MAX_LENGTH) ||
+    "[No subject provided]";
 
-  await interaction.editReply(chunks[0]);
+  return `## ${escapeDiscordText(heading)}`;
+}
+
+function formatMessageReplyContext(message, instruction, subject) {
+  const heading =
+    cleanSubject(subject) ||
+    compactText(instruction, QUESTION_PREVIEW_MAX_LENGTH) ||
+    "[No subject provided]";
+  const messagePreview = compactText(
+    message.content,
+    MESSAGE_PREVIEW_MAX_LENGTH,
+  );
+  const attachmentCount = message.attachments.size;
+  const attachmentLabel = `${attachmentCount} attachment${
+    attachmentCount === 1 ? "" : "s"
+  }`;
+  const about = messagePreview
+    ? `${getMessageAuthorName(message)} — ${messagePreview}${
+        attachmentCount > 0 ? ` (${attachmentLabel})` : ""
+      }`
+    : `${getMessageAuthorName(message)} — [${attachmentLabel}]`;
+
+  return [
+    `## ${escapeDiscordText(heading)}`,
+    `**About:** ${escapeDiscordText(about)}`,
+  ].join("\n");
+}
+
+async function sendDiscordReply(interaction, text, isPrivate, context) {
+  const contextPrefix = context ? `${context}\n\n` : "";
+  const answerMaxLength = context
+    ? Math.max(1, 1900 - contextPrefix.length)
+    : undefined;
+  const chunks = chunkForDiscord(text, answerMaxLength);
+  const replyOptions = {
+    allowedMentions: { parse: [] },
+  };
+
+  await interaction.editReply({
+    content: `${contextPrefix}${chunks[0]}`,
+    ...replyOptions,
+  });
 
   for (const chunk of chunks.slice(1)) {
-    if (followUpOptions) {
-      await interaction.followUp({ content: chunk, ...followUpOptions });
-    } else {
-      await interaction.followUp({ content: chunk });
-    }
+    await interaction.followUp({
+      content: chunk,
+      ...replyOptions,
+      ...(isPrivate ? { flags: MessageFlags.Ephemeral } : {}),
+    });
   }
 }
 
@@ -313,19 +409,21 @@ async function generateModelReply({
       },
     },
   });
-  const response = await ai.models.generateContent(buildRequest(model, prompt));
+  const response = await ai.models.generateContent(
+    buildRequest(model, `${prompt}\n\n${SUBJECT_FORMAT_INSTRUCTION}`),
+  );
 
-  return formatModelText(response);
+  return parseModelReply(formatModelText(response));
 }
 
 async function main() {
   const discordToken = requiredEnv("DISCORD_TOKEN");
   const geminiApiKey = requiredEnv("GEMINI_API_KEY");
   const geminiModel =
-    process.env.GEMINI_MODEL?.trim() || "gemini-3.6-flash";
+    process.env.GEMINI_MODEL?.trim() || "gemini-3.8-flash";
   const geminiMaxOutputTokens = parseIntegerEnv(
     "GEMINI_MAX_OUTPUT_TOKENS",
-    512,
+    4096,
   );
   const geminiThinkingLevel = parseThinkingLevel(
     process.env.GEMINI_THINKING_LEVEL,
@@ -416,7 +514,7 @@ async function main() {
           "Quote or reference the message when helpful.",
         ].join("\n");
 
-        const reply = await generateModelReply({
+        const { text: reply, subject } = await generateModelReply({
           ai,
           model: geminiModel,
           prompt,
@@ -426,7 +524,12 @@ async function main() {
           useSearch,
         });
 
-        await sendDiscordReply(modalSubmission, reply, true);
+        await sendDiscordReply(
+          modalSubmission,
+          reply,
+          true,
+          formatMessageReplyContext(targetMessage, instruction, subject),
+        );
       } catch (error) {
         if (error?.name === "InteractionCollectorError") {
           return;
@@ -479,7 +582,7 @@ async function main() {
     await interaction.deferReply();
 
     try {
-      const reply = await generateModelReply({
+      const { text: reply, subject } = await generateModelReply({
         ai,
         model: geminiModel,
         prompt,
@@ -489,7 +592,12 @@ async function main() {
         useSearch,
       });
 
-      await sendDiscordReply(interaction, reply, false);
+      await sendDiscordReply(
+        interaction,
+        reply,
+        false,
+        formatQuestionContext(prompt, subject),
+      );
     } catch (error) {
       console.error("Gemini request failed:", error);
       console.error(`Gemini model in use: ${geminiModel}`);

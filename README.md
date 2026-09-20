@@ -9,6 +9,7 @@ This is a developer-first template, not a hosted service: you create and control
 - Slash-command-first interaction, so the bot does not require Discord's `MESSAGE_CONTENT` privileged intent.
 - `/ask` with optional Google Search grounding for web-backed responses.
 - **Ask About Message**, a message-context action that lets a user choose the exact message they want Gemini to analyze.
+- Self-identifying answers with a compact Gemini-generated subject heading (and, for message actions, a compact message preview) above the model response.
 - Environment-based configuration for the model, output limit, reasoning level, system instruction, and emoji style.
 
 ## 1. Prerequisites
@@ -60,9 +61,9 @@ GEMINI_API_KEY=your_google_ai_studio_key
 
 Optional knobs:
 
-- `GEMINI_MODEL` defaults to `gemini-3.6-flash`
-- `GEMINI_MAX_OUTPUT_TOKENS` defaults to `512`
-- `GEMINI_THINKING_LEVEL` defaults to `minimal` for faster, lower-cost replies. Use `low`, `medium`, or `high` when a task needs more reasoning.
+- `GEMINI_MODEL` defaults to `gemini-3.8-flash`, the latest generally available Gemini Flash model.
+- `GEMINI_MAX_OUTPUT_TOKENS` defaults to `4096`, leaving room for Gemini's reasoning tokens before the visible answer.
+- `GEMINI_THINKING_LEVEL` defaults to `medium` for a balance of quality and latency. Use `low` for faster replies or `high` when a task needs deeper reasoning.
 - `DISCORD_EMOJI_STYLE` defaults to `light`, which allows occasional restrained emoji use; set it to `off` to keep replies emoji-free
 - `SYSTEM_INSTRUCTION` lets you control the bot persona
 
@@ -91,7 +92,9 @@ When `search: true` is enabled, the bot tells Gemini to use Google Search ground
 
 The `Ask About Message` context-menu command lets you target a specific Discord message and then type your own instruction, such as "summarize this", "rewrite this politely", or "fact-check this". This gives the bot message-level context without requiring full channel-reading memory.
 
-If you want the lowest-cost Gemini 3 option instead, set `GEMINI_MODEL=gemini-3.5-flash-lite` in your local `.env`. Keep `GEMINI_THINKING_LEVEL=minimal` for fast, inexpensive replies.
+Every substantive answer asks Gemini for a concise 3–8 word subject heading, then shows that heading above the response so the topic remains clear even when Discord collapses the slash-command arguments. If Gemini does not return the requested subject marker, the bot falls back to a shortened version of the query. Public `/ask` replies show the generated subject in the channel; private `Ask About Message` replies also show the target author and a short message preview.
+
+If you want the lowest-cost Gemini 3 option instead, set `GEMINI_MODEL=gemini-3.5-flash-lite` in your local `.env`. Set `GEMINI_THINKING_LEVEL=low` for fast, inexpensive replies.
 
 ## 7. Run it somewhere else
 
@@ -109,6 +112,7 @@ The host must keep the process running and be able to make outbound connections 
 
 - This project does not include, collect, or operate with anyone else's credentials.
 - Prompts sent to a deployed bot are processed by its owner's configured Gemini account, subject to Google's terms and data practices.
+- Public `/ask` replies include a shortened copy of the question, so avoid putting sensitive information in a public command unless that visibility is intended.
 - The owner of each deployment is responsible for Gemini usage, quotas, billing, server access, and any moderation or rate limiting appropriate for their community.
 
 ## File map
